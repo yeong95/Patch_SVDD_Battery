@@ -1,0 +1,12 @@
+# disregard anomaly map images 
+/anomaly_maps/
+
+# ipynb checkpoints 
+/.ipynb_checkpoints/
+codes/.ipynb_checkpoints/
+
+# 
+codes/__pycache__/*.pyc
+
+# saved model 
+save/
