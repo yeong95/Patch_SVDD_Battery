@@ -2,7 +2,7 @@ from codes import mvtecad
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from .utils import PatchDataset_NCHW, NHWC2NCHW, distribute_scores, distribute_score
+from .utils import PatchDataset_NCHW, NHWC2NCHW, distribute_scores, distribute_score, save_pickle
 from torchvision.models import resnet18, resnet34
 from tqdm import tqdm
 from random import sample
@@ -214,8 +214,6 @@ def infer(x_tr, x_te, K, S, models):
 
 
 
-
-
 def assess_anomaly_maps(anomaly_maps, category, normal_map, args):
     
     print("Anomaly Map shape: ", anomaly_maps.shape)
@@ -284,13 +282,75 @@ def assess_anomaly_maps(anomaly_maps, category, normal_map, args):
 
 #########################
 
+def inference_procedure(x_tr, x_te, model, idx_=1, args=None):
+    
+    if idx_ != 100:
+        maps_64, normality_map_64 = infer(x_tr, x_te, K=64, S=24, models=model)
+        maps_64 = distribute_scores(maps_64, (256, 256), K=64, S=24)
+        #det_64 = assess_anomaly_maps(maps_64, "det_64")
+        maps_32, normality_map_32 = infer(x_tr, x_te, K=32, S=14, models=model)
+        maps_32 = distribute_scores(maps_32, (256, 256), K=32, S=14) 
+        #det_32 = assess_anomaly_maps(maps_32, "det_32")
+    else:
+        maps_64 = np.load("save/four ensemble model/2_8_efficientnet_b6/maps_64_1.npy")
+        normality_map_64 = np.load("save/four ensemble model/2_8_efficientnet_b6/normality_map_64_1.npy")
+        
+        maps_32 = np.load("save/four ensemble model/2_8_efficientnet_b6/maps_32_1.npy")
+        normality_map_32 = np.load("save/four ensemble model/2_8_efficientnet_b6/normality_map_32_1.npy")
+        
+        print("load trained map...")
+
+    # save 
+    np.save(f'{args.save_path}/maps_64_{idx_}.npy', maps_64)
+    np.save(f'{args.save_path}/normality_map_64_{idx_}.npy', normality_map_64)
+
+    np.save(f'{args.save_path}/maps_32_{idx_}.npy', maps_32)
+    np.save(f'{args.save_path}/normality_map_32_{idx_}.npy', normality_map_32)
+    
+    maps_mult = maps_64 * maps_32
+    Final_normality_map = normality_map_64 * normality_map_32
+    
+    args.dataset_type = f'model_{idx_}'
+    det_mult = assess_anomaly_maps(maps_mult, f"model_{idx_}", Final_normality_map, args)
+    
+    return det_mult
+    
+
+    
+def compute_final_anomaly_score():
+    
+#     for i in range(1,5):
+#         globals()['score_{}' .format(i)] = np.load(f'save/four ensemble model/2_8_efficientnet_b6/model_{i}_anomaly_scores.npy')
+    
+    for i in range(1,9):
+        globals()['score_{}' .format(i)] = np.load(f'save/four ensemble model/2_15_efficientnet_b6/model_{i}_anomaly_scores.npy')
+    
+#     import pdb;pdb.set_trace()
+    new_score = []
+    for i in range(len(score_1)):
+        new_score.append(min(score_1[i], score_2[i], score_3[i], score_4[i], score_5[i], score_6[i], score_7[i], score_8[i]))
+#     pdb.set_trace()
+    
+    save_path = 'save/four ensemble model/2_15_efficientnet_b6/final_ano_score.pickle'
+    save_pickle(save_path, new_score)
+        
+        
+    
+    
 def eval_encoder_NN_multiK(args):
 
-#     x_tr = mvtecad.get_x_standardized(mode='train') # Training dataset
-#     x_te = mvtecad.get_x_standardized(mode='test')  # Test dataset
 
-    x_tr = battery.get_x_standardized(mode='train', args=args)
-    x_te = battery.get_x_standardized(mode='test', args=args)
+#     x_tr_1 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[0])  # model 1
+#     x_tr_2 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[1])  # model 2
+#     x_tr_3 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[2])  # model 3
+#     x_tr_4 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[3])  # model 4
+#     x_tr_5 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[4])  # model 5
+#     x_tr_6 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[5])  # model 6
+#     x_tr_7 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[6])  # model 7
+#     x_tr_8 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[7])  # model 8
+    
+
+#     x_te = battery.get_x_standardized(mode='test', args=args)
 
     print("dataset completed !")
 
@@ -318,47 +378,50 @@ def eval_encoder_NN_multiK(args):
         model = EfficientNet.from_pretrained('efficientnet-b6') # EfficientNet 사용 시 
         model.to(device)
         model.eval()
+        
+#     print("model 1 start...")
+#     det_mult = inference_procedure(x_tr_1, x_te, model, idx_=1, args=args)
+#     print("model 2 start...")
+#     det_mult = inference_procedure(x_tr_2, x_te, model, idx_=2, args=args)
+#     print("model 3 start...")
+#     det_mult = inference_procedure(x_tr_3, x_te, model, idx_=3, args=args)
+#     print("model 4 start...")
+#     det_mult = inference_procedure(x_tr_4, x_te, model, idx_=4, args=args)
+#     print("model 5 start...")
+#     det_mult = inference_procedure(x_tr_5, x_te, model, idx_=5, args=args)
+#     print("model 6 start...")
+#     det_mult = inference_procedure(x_tr_6, x_te, model, idx_=6, args=args)
+#     print("model 7 start...")
+#     det_mult = inference_procedure(x_tr_7, x_te, model, idx_=7, args=args)
+#     print("model 8 start...")
+#     det_mult = inference_procedure(x_tr_8, x_te, model, idx_=8, args=args)
 
-    load_map = args.load_map
-    if not load_map:
-        maps_64, normality_map_64 = infer(x_tr, x_te, K=64, S=24, models=model)
-        maps_64 = distribute_scores(maps_64, (256, 256), K=64, S=24)
-        #det_64 = assess_anomaly_maps(maps_64, "det_64")
-
-        maps_32, normality_map_32 = infer(x_tr, x_te, K=32, S=14, models=model)
-        maps_32 = distribute_scores(maps_32, (256, 256), K=32, S=14) 
-        #det_32 = assess_anomaly_maps(maps_32, "det_32")
         
-        # save 
-        np.save(f'{args.save_path}/maps_64.npy', maps_64)
-        np.save(f'{args.save_path}/normality_map_64.npy', normality_map_64)
-        
-        np.save(f'{args.save_path}/maps_32.npy', maps_32)
-        np.save(f'{args.save_path}/normality_map_32.npy', normality_map_32)
-        
-    else:
-        maps_64 = np.load("maps_64.npy")
-        normality_map_64 = np.load("normality_map_64.npy")
-        
-        maps_32 = np.load("maps_32.npy")
-        normality_map_32 = np.load("normality_map_32.npy")
-        
-        print("load trained map...")
-
+    # put test image and compute anomaly score
+    compute_final_anomaly_score()
+#     det_mult = 0
     
     
-    maps_mult = maps_64 * maps_32
-    Final_normality_map = normality_map_64 * normality_map_32
-    det_mult = assess_anomaly_maps(maps_mult, "det_mult", Final_normality_map, args)
+#     maps_mult = maps_64 * maps_32
+#     Final_normality_map = normality_map_64 * normality_map_32
+
+#     args.dataset_type = 'model_1'
+#     det_mult = assess_anomaly_maps(maps_mult, "det_mult", Final_normality_map, args) 
+#     args.dataset_type = 'model_2'
+#     det_mult = assess_anomaly_maps(maps_mult, "det_mult", Final_normality_map, args)
+#     args.dataset_type = 'model_3'
+#     det_mult = assess_anomaly_maps(maps_mult, "det_mult", Final_normality_map, args)
+#     args.dataset_type = 'model_4'
+#     det_mult = assess_anomaly_maps(maps_mult, "det_mult", Final_normality_map, args)
 
     return {
         #'det_64': det_64,
         #'det_32': det_32,
         'det_mult': det_mult,
 
-        #'maps_64': maps_64,
-        #'maps_32': maps_32,
-        'maps_mult': maps_mult,
+#         'maps_64': maps_64,
+#         'maps_32': maps_32,
+#         'maps_mult': maps_mult,
     }
 
 

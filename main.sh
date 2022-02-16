@@ -1,1 +1,1 @@
-python main.py --dataset_type multi --load_pretrained_model True --pretrained_model_name efficientnetb6_15class.pt
+python main.py --load_pretrained_model True --pretrained_model_name efficientnetb6_15class.pt

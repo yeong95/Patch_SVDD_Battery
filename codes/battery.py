@@ -50,10 +50,9 @@ def set_root_path(new_path):
     DATASET_PATH = new_path
 
 
-def get_x(mode='train', args=None):
+def get_x(mode='train', args=None, normal_class=None):
 
     if mode == 'test':
-        
         fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
         fpaths = sorted(glob(fpattern))
         print("test image: ", len(fpaths), " 장")
@@ -62,7 +61,7 @@ def get_x(mode='train', args=None):
         images = np.asarray(list(map(imread, fpaths)))
         
     else:        
-        fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
+        fpattern = os.path.join(args.dataset_path, f'{mode}/{normal_class}/*.bmp')
 #         print(fpattern)
         fpaths = sorted(glob(fpattern))
         print("train image: ", len(fpaths), " 장")
@@ -78,8 +77,8 @@ def get_x(mode='train', args=None):
     return images
 
 
-def get_x_standardized(mode='train', args=None):
-    x = get_x(mode=mode, args=args)
+def get_x_standardized(mode='train', args=None, normal_class=None):
+    x = get_x(mode=mode, args=args, normal_class=normal_class)
     mean = get_mean(x)
     return (x.astype(np.float32) - mean) / 255
 
@@ -87,29 +86,42 @@ def get_x_standardized(mode='train', args=None):
 def get_label(args):
     mode = 'test'
     
-    if args.dataset_type == 'multi':
-        normal_names = ['코팅부 경계부 불량', '무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
-                     '코팅부 기재연결부', '무지부 기재연결부', '코팅부 코팅불량']
-        abnormal_names = ['코팅부 버블', '코팅부 흑점', '무지부 주름', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
-    elif args.dataset_type == 'one':
-        normal_names = ['코팅부 경계부 불량']
-        abnormal_names = ['무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
+    class_list = ['코팅부 경계부 불량','무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
                      '코팅부 기재연결부', '무지부 기재연결부', '코팅부 코팅불량', '코팅부 버블', '코팅부 흑점', '무지부 주름', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
     
-#     normal_paths = []
-#     for name in normal_names:
-#         fpattern = os.path.join(DATASET_PATH, f'{mode}/{name}/*.bmp')
-#         fpaths = sorted(glob(fpattern))
-# #         print(len(fpaths))
-#         normal_paths += fpaths
-    
-#     abnormal_paths = []
-#     for name in abnormal_names:
-#         fpattern = os.path.join(DATASET_PATH, f'{mode}/{name}/*.bmp')
-#         fpaths = sorted(glob(fpattern))
-# #         print(len(fpaths))
-#         abnormal_paths += fpaths
-
+    if args.dataset_type == 'model_1':
+        normal_names = '코팅부 경계부 불량'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_2':
+        normal_names = '무지부 줄무늬'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_3':
+        normal_names = '코팅부 접힘'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_4':
+        normal_names = '코팅부 미코팅'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_5':
+        normal_names = '코팅부 줄무늬'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_6':
+        normal_names = '코팅부 테이프'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_7':
+        normal_names = '코팅부 기재연결부'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+    elif args.dataset_type == 'model_8':
+        normal_names = '무지부 기재연결부'
+        abnormal_names = class_list.copy()
+        abnormal_names.remove(normal_names)
+        
     fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
     fpaths = sorted(glob(fpattern))
     
