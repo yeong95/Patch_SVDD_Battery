@@ -17,6 +17,9 @@ import codes.battery as battery
 import time
 import scipy.stats
 
+import optuna
+from optuna.trial import TrialState
+
 
 @jit
 def train_distribution(cov, emb, num_range, I):
@@ -216,7 +219,9 @@ def infer(x_tr, x_te, K, S, models):
 
 
 
-def assess_anomaly_maps(anomaly_maps, category, normal_map, args):
+def assess_anomaly_maps(trial, anomaly_maps, category, normal_map, args):
+    
+    lambda_opt = trial.suggest_int('lambda', 0, 100000)
     
     print("Anomaly Map shape: ", anomaly_maps.shape)
     
@@ -225,61 +230,14 @@ def assess_anomaly_maps(anomaly_maps, category, normal_map, args):
     for i in range(anomaly_maps.shape[0]):
         anomaly_kl_scores[i] = scipy.stats.entropy(normal_map.flatten(), anomaly_maps[i].flatten())
         
-    Det_AUROC = dict()
+#     Det_AUROC = dict()
     anomaly_scores = anomaly_maps.max(axis=-1).max(axis=-1)
     
-    total_anomaly_scores_1 = anomaly_scores + 100 * anomaly_kl_scores
-    total_anomaly_scores_2 = anomaly_scores + 300 * anomaly_kl_scores
-    total_anomaly_scores_3 = anomaly_scores + 500 * anomaly_kl_scores
-    total_anomaly_scores_4 = anomaly_scores + 1000 * anomaly_kl_scores
-    total_anomaly_scores_5 = anomaly_scores + 3000 * anomaly_kl_scores
-    total_anomaly_scores_6 = anomaly_scores + 5000 * anomaly_kl_scores
-    total_anomaly_scores_7 = anomaly_scores + 10000 * anomaly_kl_scores
+    total_anomaly_scores = anomaly_scores + lambda_opt * anomaly_kl_scores
     
-    auroc_det = battery.detection_auroc(anomaly_scores, args)
-    auroc_det_1 = battery.detection_auroc(total_anomaly_scores_1, args)
-    auroc_det_2 = battery.detection_auroc(total_anomaly_scores_2, args)
-    auroc_det_3 = battery.detection_auroc(total_anomaly_scores_3, args)
-    auroc_det_4 = battery.detection_auroc(total_anomaly_scores_4, args)
-    auroc_det_5 = battery.detection_auroc(total_anomaly_scores_5, args)
-    auroc_det_6 = battery.detection_auroc(total_anomaly_scores_6, args)
-    auroc_det_7 = battery.detection_auroc(total_anomaly_scores_7, args)
-    
-    Det_AUROC[0] = auroc_det
-    Det_AUROC[100] = auroc_det_1
-    Det_AUROC[300] = auroc_det_2
-    Det_AUROC[500] = auroc_det_3
-    Det_AUROC[1000] = auroc_det_4
-    Det_AUROC[3000] = auroc_det_5
-    Det_AUROC[5000] = auroc_det_6
-    Det_AUROC[10000] = auroc_det_7
-    
-    key_max = max(Det_AUROC, key = Det_AUROC.get)
-    print("alpha: ", key_max)
+    auroc_det = battery.detection_auroc(total_anomaly_socres, args)
 
-    final_det_auroc = Det_AUROC[key_max]
-    
-    if key_max == 0:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", anomaly_scores)
-    elif key_max == 100:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_1)
-    elif key_max == 300:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_2)
-    elif key_max == 500:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_3)
-    elif key_max == 1000:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_4)
-    elif key_max == 3000:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_5)
-    elif key_max == 5000:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_6)
-    else:
-        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_7)
-    
-    
-    #np.save("/workspace/CAMPUS/Final_code(인수인계)/{}_anomaly_scores".format(category), )
-
-    return final_det_auroc
+    return auroc_det
 
 
 #########################
