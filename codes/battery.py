@@ -56,18 +56,22 @@ def get_x(mode='train', args=None, normal_class=None):
         fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
         fpaths = sorted(glob(fpattern))
         print("test image: ", len(fpaths), " 장")
-#         print("경로 확인: ", fpaths[0])
-        
-        images = np.asarray(list(map(imread, fpaths)))
-        
-    else:        
+#         print("경로 확인: ", fpaths[0])        
+        images = np.asarray(list(map(imread, fpaths)))        
+    elif mode == 'train':        
         fpattern = os.path.join(args.dataset_path, f'{mode}/{normal_class}/*.bmp')
 #         print(fpattern)
         fpaths = sorted(glob(fpattern))
         print("train image: ", len(fpaths), " 장")
-#         print("경로 확인: ", fpaths[0])
-        
-        images = np.asarray(list(map(imread, fpaths)))
+#         print("경로 확인: ", fpaths[0])        
+        images = np.asarray(list(map(imread, fpaths)))        
+    elif mode == 'valid':
+        fpattern = os.path.join(args.dataset_path, f'{mode}/{normal_class}/*.bmp')
+#         print(fpattern)
+        fpaths = sorted(glob(fpattern))
+        print("valid image: ", len(fpaths), " 장")
+#         print("경로 확인: ", fpaths[0])        
+        images = np.asarray(list(map(imread, fpaths)))  
         
 
     if images.shape[-1] != 3:

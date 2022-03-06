@@ -40,14 +40,15 @@ def main():
 #     hour = datetime.now().hour
 
     # save path
-    args.save_path = f'./save/four ensemble model/{month}_{day}_efficientnet_b6'
+    args.save_path = f'./save/ensemble model/{month}_{day}_efficientnet_b6'
     os.makedirs(args.save_path, exist_ok=True)
     
     # pretrained model path 
     args.pretrained_model_path = f'./save/finetune/{args.pretrained_model_name}'
     
     # data path
-    args.dataset_path = f'/tf/KAIER_2022/Battery_data/eight ensemble model'    
+    args.dataset_path = f'/tf/KAIER_2022/Battery_data/eight ensemble model'        
+
 #     DATASET_PATH = '/tf/KAIER_2022/Battery_data/multi_class' # test용
 #     DATASET_PATH_origin = '/tf/KAIER_2022/Battery_data/multi_class' # Train용
     
