@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--load_map", type=bool, default=False)
     parser.add_argument("--load_pretrained_model", type=bool, default=False)
     parser.add_argument("--pretrained_model_name", type=str)
+    parser.add_argument("--test_mode", type=str, default='test')
     
     args = parser.parse_args()    
     

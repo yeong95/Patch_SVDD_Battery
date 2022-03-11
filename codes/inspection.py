@@ -16,10 +16,20 @@ import codes.mvtecad as mvtec
 import codes.battery as battery
 import time
 import scipy.stats
+import random
+import pickle
 
 import optuna
 from optuna.trial import TrialState
 
+random_seed = 42
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.cuda.manual_seed_all(random_seed) # if use multi-GPU
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+np.random.seed(random_seed)
+random.seed(random_seed)
 
 @jit
 def train_distribution(cov, emb, num_range, I):
@@ -67,7 +77,7 @@ device = torch.device('cuda' if use_cuda else 'cpu')
 __all__ = ['eval_encoder_NN_multiK', 'eval_embeddings_NN_multiK']
 
 
-def infer(x_tr, x_te, K, S, models):
+def infer(x_tr, x_te, K, S, models, args):
     
     #============ResNet Backbone===============#
 
@@ -88,77 +98,94 @@ def infer(x_tr, x_te, K, S, models):
     # Effb0- 192dim, Effb1- 192dim, Effb2- 208dim, Effb3 - 240dim, Effb4 - 272dim, Effb5 - 304dim, Effb6 - 344dim, Effb7 - 384dim
     # ResNet18 - 448dim, ResNet34 - 448dim
     
-    with torch.no_grad():
-        for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_tr, "Train infer %dx%d patch" %(K, K) , position = 0, leave = True)):
-            xs = xs.cuda() # (512, 3, 64, 64)
-            
-            #_ = models(xs)
+    try:
+#         import pdb;pdb.set_trace()
+        with open(f"{args.save_path}/{K}_embs_tr.pickle", "rb") as f:
+            embs_tr = pickle.load(f)
+        print(f"{K} embs_tr loaded")
+    except:
+        with torch.no_grad():
+            for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_tr, "Train infer %dx%d patch" %(K, K) , position = 0, leave = True)):
+                xs = xs.cuda() # (512, 3, 64, 64)
 
-            #embedding = torch.cat((outputs[0], outputs[1], outputs[2]), dim = 1) # (64+128+256 => 512, 448, 1, 1 )
-            
-            # Prediction
-            endpoints = models.extract_endpoints(xs)
+                #_ = models(xs)
 
-            del xs
+                #embedding = torch.cat((outputs[0], outputs[1], outputs[2]), dim = 1) # (64+128+256 => 512, 448, 1, 1 )
 
+                # Prediction
+                endpoints = models.extract_endpoints(xs)
 
-
-            embedding = torch.cat((F.adaptive_avg_pool2d(endpoints['reduction_1'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_2'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_3'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_4'].detach().cpu(), output_size = (1, 1))), dim = 1)
+                del xs
 
 
-            outputs = []
 
-            for embed, n, i, j in zip(embedding, ns, iis, js):  # embedding : [512, 344, 1, 1], n:image number i,j: patch location  
-                embs_tr[n, i, j] = np.squeeze(embed)  #embed: [344, 1, 1]
+                embedding = torch.cat((F.adaptive_avg_pool2d(endpoints['reduction_1'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_2'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_3'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_4'].detach().cpu(), output_size = (1, 1))), dim = 1)
+    #             import pdb;pdb.set_trace()
 
-            del endpoints
-            del embedding
 
-    del x_tr # 삭제
+                outputs = []
+
+                for embed, n, i, j in zip(embedding, ns, iis, js):  # embedding : [512, 344, 1, 1], n:image number i,j: patch location  
+                    embs_tr[n, i, j] = np.squeeze(embed)  #embed: [344, 1, 1]
+
+                del endpoints
+                del embedding
+
+        del x_tr # 삭제    
+        
+        with open(f'{args.save_path}/{K}_embs_tr.pickle', 'wb') as f:
+            pickle.dump(embs_tr, f)
     
+    try: 
+        with open(f"{args.save_path}/{K}_embs_te.pickle", "rb") as f:
+            embs_te = pickle.load(f)
+        print(f"{K} embs_te loaded")
+    except:
+        x_te = NHWC2NCHW(x_te)
+        dataset_te = PatchDataset_NCHW(x_te, K=K, S=S)
+        loader_te = DataLoader(dataset_te, batch_size=512, shuffle=False, pin_memory=False)
+        embs_te = np.empty((dataset_te.N, dataset_te.row_num, dataset_te.col_num, 344), dtype=np.float32)  # [-1, I, J, D]
+        with torch.no_grad():
+            for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_te, "test infer %dx%d patch" % (K, K), position = 0, leave = True)):
+                xs = xs.cuda() # (64, 3, 64, 64)
 
-    x_te = NHWC2NCHW(x_te)
-    dataset_te = PatchDataset_NCHW(x_te, K=K, S=S)
-    loader_te = DataLoader(dataset_te, batch_size=512, shuffle=False, pin_memory=False)
-    embs_te = np.empty((dataset_te.N, dataset_te.row_num, dataset_te.col_num, 344), dtype=np.float32)  # [-1, I, J, D]
-    with torch.no_grad():
-        for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_te, "test infer %dx%d patch" % (K, K), position = 0, leave = True)):
-            xs = xs.cuda() # (64, 3, 64, 64)
-
-            # Prediction
-            endpoints = models.extract_endpoints(xs)
-            
-            
-            
-            #_ = models(xs)
-
-            #del xs
-            
-            #embedding = torch.cat((outputs[0], outputs[1], outputs[2]), dim = 1) # (64+128+256 => 512, 448, 1, 1 )
+                # Prediction
+                endpoints = models.extract_endpoints(xs)
 
 
-             
-            embedding = torch.cat((F.adaptive_avg_pool2d(endpoints['reduction_1'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_2'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_3'].detach().cpu(), output_size = (1, 1)),
-                                   F.adaptive_avg_pool2d(endpoints['reduction_4'].detach().cpu(), output_size = (1, 1))), dim = 1)
 
-            
-            outputs = []
+                #_ = models(xs)
 
-            for embed, n, i, j in zip(embedding, ns, iis, js):
-                embs_te[n, i, j] = np.squeeze(embed)
+                #del xs
 
-            del embedding
-            del endpoints
-    
-    del x_te
+                #embedding = torch.cat((outputs[0], outputs[1], outputs[2]), dim = 1) # (64+128+256 => 512, 448, 1, 1 )
+
+
+
+                embedding = torch.cat((F.adaptive_avg_pool2d(endpoints['reduction_1'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_2'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_3'].detach().cpu(), output_size = (1, 1)),
+                                       F.adaptive_avg_pool2d(endpoints['reduction_4'].detach().cpu(), output_size = (1, 1))), dim = 1)
+
+
+                outputs = []
+
+                for embed, n, i, j in zip(embedding, ns, iis, js):
+                    embs_te[n, i, j] = np.squeeze(embed)
+
+                del embedding
+                del endpoints
+
+        del x_te
+        with open(f'{args.save_path}/{K}_embs_te.pickle', 'wb') as f:
+            pickle.dump(embs_te, f)
     
     mem_report("Before Train distribution")
-
+    
+    
     B_train, H_train, W_train, C_train = embs_tr.shape   # embs_tr: [batch, 9, 9, 344]
     emb_train = embs_tr.reshape((B_train, H_train * W_train, C_train))  
 
@@ -189,7 +216,6 @@ def infer(x_tr, x_te, K, S, models):
 
     
 #     train_dist_list = test_inference
-    # Test inference를 대체
     dist_list = test_inference(mean_train, cov_train, H_test*W_test, emb_test)
 
     dist_list = np.array(dist_list).transpose(1, 0).reshape(B_test, H_test, W_test)   # (batch, 9, 9)
@@ -219,9 +245,27 @@ def infer(x_tr, x_te, K, S, models):
 
 
 
-def assess_anomaly_maps(trial, anomaly_maps, category, normal_map, args):
+# def assess_anomaly_maps(trial, anomaly_maps, category, normal_map, args):
     
-    lambda_opt = trial.suggest_int('lambda', 0, 100000)
+#     lambda_opt = trial.suggest_int('lambda', 0, 100000)
+    
+#     print("Anomaly Map shape: ", anomaly_maps.shape)
+    
+#     anomaly_kl_scores = np.zeros(anomaly_maps.shape[0])
+    
+#     for i in range(anomaly_maps.shape[0]):
+#         anomaly_kl_scores[i] = scipy.stats.entropy(normal_map.flatten(), anomaly_maps[i].flatten())
+        
+# #     Det_AUROC = dict()
+#     anomaly_scores = anomaly_maps.max(axis=-1).max(axis=-1)
+    
+#     total_anomaly_scores = anomaly_scores + lambda_opt * anomaly_kl_scores
+    
+#     auroc_det = battery.detection_auroc(total_anomaly_socres, args)
+
+#     return auroc_det
+
+def assess_anomaly_maps(anomaly_maps, category, normal_map, args):
     
     print("Anomaly Map shape: ", anomaly_maps.shape)
     
@@ -230,14 +274,61 @@ def assess_anomaly_maps(trial, anomaly_maps, category, normal_map, args):
     for i in range(anomaly_maps.shape[0]):
         anomaly_kl_scores[i] = scipy.stats.entropy(normal_map.flatten(), anomaly_maps[i].flatten())
         
-#     Det_AUROC = dict()
+    Det_AUROC = dict()
     anomaly_scores = anomaly_maps.max(axis=-1).max(axis=-1)
     
-    total_anomaly_scores = anomaly_scores + lambda_opt * anomaly_kl_scores
+    total_anomaly_scores_1 = anomaly_scores + 100 * anomaly_kl_scores
+    total_anomaly_scores_2 = anomaly_scores + 300 * anomaly_kl_scores
+    total_anomaly_scores_3 = anomaly_scores + 500 * anomaly_kl_scores
+    total_anomaly_scores_4 = anomaly_scores + 1000 * anomaly_kl_scores
+    total_anomaly_scores_5 = anomaly_scores + 3000 * anomaly_kl_scores
+    total_anomaly_scores_6 = anomaly_scores + 5000 * anomaly_kl_scores
+    total_anomaly_scores_7 = anomaly_scores + 10000 * anomaly_kl_scores
     
-    auroc_det = battery.detection_auroc(total_anomaly_socres, args)
+    auroc_det = battery.detection_auroc(anomaly_scores, args)
+    auroc_det_1 = battery.detection_auroc(total_anomaly_scores_1, args)
+    auroc_det_2 = battery.detection_auroc(total_anomaly_scores_2, args)
+    auroc_det_3 = battery.detection_auroc(total_anomaly_scores_3, args)
+    auroc_det_4 = battery.detection_auroc(total_anomaly_scores_4, args)
+    auroc_det_5 = battery.detection_auroc(total_anomaly_scores_5, args)
+    auroc_det_6 = battery.detection_auroc(total_anomaly_scores_6, args)
+    auroc_det_7 = battery.detection_auroc(total_anomaly_scores_7, args)
+    
+    Det_AUROC[0] = auroc_det
+    Det_AUROC[100] = auroc_det_1
+    Det_AUROC[300] = auroc_det_2
+    Det_AUROC[500] = auroc_det_3
+    Det_AUROC[1000] = auroc_det_4
+    Det_AUROC[3000] = auroc_det_5
+    Det_AUROC[5000] = auroc_det_6
+    Det_AUROC[10000] = auroc_det_7
+    
+    key_max = max(Det_AUROC, key = Det_AUROC.get)
+    print("alpha: ", key_max)
 
-    return auroc_det
+    final_det_auroc = Det_AUROC[key_max]
+    
+    if key_max == 0:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", anomaly_scores)
+    elif key_max == 100:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_1)
+    elif key_max == 300:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_2)
+    elif key_max == 500:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_3)
+    elif key_max == 1000:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_4)
+    elif key_max == 3000:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_5)
+    elif key_max == 5000:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_6)
+    else:
+        np.save(f"{args.save_path}/{category}_anomaly_scores", total_anomaly_scores_7)
+    
+    
+    #np.save("/workspace/CAMPUS/Final_code(인수인계)/{}_anomaly_scores".format(category), )
+
+    return final_det_auroc
 
 
 #########################
@@ -279,11 +370,11 @@ def eval_encoder_NN_multiK(args):
 
     load_map = args.load_map
     if not load_map:
-        maps_64, normality_map_64 = infer(x_tr, x_te, K=64, S=24, models=model)
+        maps_64, normality_map_64 = infer(x_tr, x_te, K=64, S=24, models=model, args=args)
         maps_64 = distribute_scores(maps_64, (256, 256), K=64, S=24)
         #det_64 = assess_anomaly_maps(maps_64, "det_64")
 
-        maps_32, normality_map_32 = infer(x_tr, x_te, K=32, S=14, models=model)
+        maps_32, normality_map_32 = infer(x_tr, x_te, K=32, S=14, models=model, args=args)
         maps_32 = distribute_scores(maps_32, (256, 256), K=32, S=14) 
         #det_32 = assess_anomaly_maps(maps_32, "det_32")
         
@@ -295,11 +386,18 @@ def eval_encoder_NN_multiK(args):
         np.save(f'{args.save_path}/normality_map_32.npy', normality_map_32)
         
     else:
-        maps_64 = np.load("maps_64.npy")
-        normality_map_64 = np.load("normality_map_64.npy")
+#         maps_64 = np.load(f"{args.save_path}/maps_64.npy")
+#         normality_map_64 = np.load(f"{args.save_path}/normality_map_64.npy")
         
-        maps_32 = np.load("maps_32.npy")
-        normality_map_32 = np.load("normality_map_32.npy")
+#         maps_32 = np.load(f"{args.save_path}/maps_32.npy")
+#         normality_map_32 = np.load(f"{args.save_path}/normality_map_32.npy")
+
+        save_path = 'save/one_class/1_26_efficientnet_b6'
+        maps_64 = np.load(f"{save_path}/maps_64.npy")
+        normality_map_64 = np.load(f"{save_path}/normality_map_64.npy")
+        
+        maps_32 = np.load(f"{save_path}/maps_32.npy")
+        normality_map_32 = np.load(f"{save_path}/normality_map_32.npy")
         
         print("load trained map...")
 

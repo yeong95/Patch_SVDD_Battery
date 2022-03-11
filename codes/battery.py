@@ -54,7 +54,7 @@ def get_x(mode='train', args=None):
 
     if mode == 'test':
         
-        fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
+        fpattern = os.path.join(args.dataset_path, f'{args.test_mode}/*/*.bmp')
         fpaths = sorted(glob(fpattern))
         print("test image: ", len(fpaths), " 장")
 #         print("경로 확인: ", fpaths[0])
@@ -110,7 +110,7 @@ def get_label(args):
 # #         print(len(fpaths))
 #         abnormal_paths += fpaths
 
-    fpattern = os.path.join(args.dataset_path, f'{mode}/*/*.bmp')
+    fpattern = os.path.join(args.dataset_path, f'{args.test_mode}/*/*.bmp')
     fpaths = sorted(glob(fpattern))
     
     # get only label name in data path 
