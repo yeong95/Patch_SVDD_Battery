@@ -1,1 +1,1 @@
-python main.py --dataset_type one --load_pretrained_model True --pretrained_model_name efficientnetb6_15class.pt --test_mode test_100_samples_2
+python main.py --dataset_type one --load_pretrained_model True --pretrained_model_name efficientnetb6_15class.pt 

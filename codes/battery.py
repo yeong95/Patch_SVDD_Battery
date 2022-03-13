@@ -92,9 +92,8 @@ def get_label(args):
                      '코팅부 기재연결부', '무지부 기재연결부', '코팅부 코팅불량']
         abnormal_names = ['코팅부 버블', '코팅부 흑점', '무지부 주름', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
     elif args.dataset_type == 'one':
-        normal_names = ['코팅부 경계부 불량']
-        abnormal_names = ['무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
-                     '코팅부 기재연결부', '무지부 기재연결부', '코팅부 코팅불량', '코팅부 버블', '코팅부 흑점', '무지부 주름', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
+        normal_names = ['무지부 줄무늬']
+        abnormal_names = ['무지부 주름']
     
 #     normal_paths = []
 #     for name in normal_names:

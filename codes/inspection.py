@@ -392,12 +392,11 @@ def eval_encoder_NN_multiK(args):
 #         maps_32 = np.load(f"{args.save_path}/maps_32.npy")
 #         normality_map_32 = np.load(f"{args.save_path}/normality_map_32.npy")
 
-        save_path = 'save/one_class/1_26_efficientnet_b6'
-        maps_64 = np.load(f"{save_path}/maps_64.npy")
-        normality_map_64 = np.load(f"{save_path}/normality_map_64.npy")
+        maps_64 = np.load(f"{args.save_path}/maps_64.npy")
+        normality_map_64 = np.load(f"{args.save_path}/normality_map_64.npy")
         
-        maps_32 = np.load(f"{save_path}/maps_32.npy")
-        normality_map_32 = np.load(f"{save_path}/normality_map_32.npy")
+        maps_32 = np.load(f"{args.save_path}/maps_32.npy")
+        normality_map_32 = np.load(f"{args.save_path}/normality_map_32.npy")
         
         print("load trained map...")
 
