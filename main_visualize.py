@@ -29,7 +29,7 @@ def save_maps(maps, options, maps_max):
         axes[1].set_axis_off()
 
         plt.tight_layout()
-        fpath = f'anomaly_maps/{options}/n{n:04d}_{image_class}.png'
+        fpath = f'false prediction anomaly_maps/{options}/n{n:04d}_{image_class}.png'
         makedirpath(fpath)
         plt.savefig(fpath)
         plt.close()
@@ -48,22 +48,26 @@ def main():
 
     #det_sum = results['det_sum']
 #     import pdb;pdb.set_trace()
-    load_results = True
-    if load_results:
-        results = load_pickle('results.pickle')
-        print("load results finished...")
-    else:
-        results = eval_encoder_NN_multiK()
+#     load_results = True
+#     if load_results:
+#         results = load_pickle('results.pickle')
+#         print("load results finished...")
+#     else:
+#         results = eval_encoder_NN_multiK()
+#     maps = results['maps_mult']
+    test_maps_32_list = [0]
+    test_maps_64_list = [0]
+    for i in range(1,7):
+        test_maps_32 = np.load(f"test_maps_32_{i}.npy")
+        test_maps_64 = np.load(f"test_maps_64_{i}.npy")
+        test_maps_32_list.append(test_maps_32)
+        test_maps_64_list.append(test_maps_64)
+    import pdb;pdb.set_trace()
+    argmin_array = np.load("argmin_array.npy")
+    map_path = 'save/무지부_코팅부/3_13_efficinetnet_b6'
+    for x in argmin_array:
+        os.path.join(map_path, )
         
-        
-    det_mult = results['det_mult']
-
-    print(
-        f'| mult | Det: {det_mult:.3f}')
-
-    
-    maps = results['maps_mult']
-    
     save_maps(maps, "mult_absolute", maps.max()) 
     
     #np.save(os.path.join(os.getcwd(), 'maps_mult'), maps4)

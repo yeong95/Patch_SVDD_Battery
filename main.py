@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 from codes.inspection import eval_encoder_NN_multiK
-
+from pytz import timezone
 
 def do_evaluate_encoder_multiK(args):
     results = eval_encoder_NN_multiK(args)
@@ -32,28 +32,31 @@ def main():
     parser.add_argument("--load_map", type=bool, default=False)
     parser.add_argument("--load_pretrained_model", type=bool, default=False)
     parser.add_argument("--pretrained_model_name", type=str)
+#     parser.add_argument("--data_choice", type=str, default='무지부', choices=['무지부', '코팅부'])
     
     args = parser.parse_args()    
     
-    month = datetime.today().month
-    day = datetime.today().day
+    korea_date = datetime.now(timezone('Asia/Seoul'))
+
+    month = korea_date.month
+    day = korea_date.day
 #     hour = datetime.now().hour
 
     # save path
-    args.save_path = f'./save/ensemble model/{month}_{day}_efficientnet_b6'
+    args.save_path = f'./save/무지부_코팅부/{month}_{day}_efficientnet_b6'
     os.makedirs(args.save_path, exist_ok=True)
     
     # pretrained model path 
     args.pretrained_model_path = f'./save/finetune/{args.pretrained_model_name}'
     
     # data path
-    args.dataset_path = f'/tf/KAIER_2022/Battery_data/eight ensemble model'        
+    args.dataset_path = f'/tf/KAIER_2022/Battery_data/무지부_코팅부/코팅부'        
 
 #     DATASET_PATH = '/tf/KAIER_2022/Battery_data/multi_class' # test용
 #     DATASET_PATH_origin = '/tf/KAIER_2022/Battery_data/multi_class' # Train용
     
     # normal class
-    args.normal_class = ['코팅부 경계부 불량','무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', '코팅부 기재연결부', '무지부 기재연결부']
+    args.normal_class = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', '코팅부 코팅불량']
     
     do_evaluate_encoder_multiK(args)
 

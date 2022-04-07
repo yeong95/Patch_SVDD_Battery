@@ -1,5 +1,7 @@
 # disregard anomaly map images 
 /anomaly_maps/
+/false prediction anomaly_maps/
+/false prediction image/
 
 # ipynb checkpoints 
 /.ipynb_checkpoints/
@@ -10,3 +12,6 @@ codes/__pycache__/*.pyc
 
 # saved model 
 save/
+
+# Final code2 
+/Final_code2/

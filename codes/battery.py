@@ -67,11 +67,15 @@ def get_x(mode='train', args=None, normal_class=None):
         images = np.asarray(list(map(imread, fpaths)))        
     elif mode == 'valid':
         fpattern = os.path.join(args.dataset_path, f'{mode}/{normal_class}/*.bmp')
+        fpattern1 = os.path.join(args.dataset_path, f'train/{normal_class}/*.bmp')
+        
 #         print(fpattern)
         fpaths = sorted(glob(fpattern))
-        print("valid image: ", len(fpaths), " 장")
+        fpaths1 = sorted(glob(fpattern1))
+        
+        print("valid image: ", len(fpaths+fpaths1), " 장")
 #         print("경로 확인: ", fpaths[0])        
-        images = np.asarray(list(map(imread, fpaths)))  
+        images = np.asarray(list(map(imread, fpaths+fpaths1)))  
         
 
     if images.shape[-1] != 3:
@@ -90,39 +94,31 @@ def get_x_standardized(mode='train', args=None, normal_class=None):
 def get_label(args):
     mode = 'test'
     
-    class_list = ['코팅부 경계부 불량','무지부 줄무늬', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
-                     '코팅부 기재연결부', '무지부 기재연결부', '코팅부 코팅불량', '코팅부 버블', '코팅부 흑점', '무지부 주름', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
+    class_list = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
+                  '코팅부 코팅불량', '코팅부 버블', '코팅부 흑점', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
     
     if args.dataset_type == 'model_1':
         normal_names = '코팅부 경계부 불량'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
     elif args.dataset_type == 'model_2':
-        normal_names = '무지부 줄무늬'
-        abnormal_names = class_list.copy()
-        abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_3':
         normal_names = '코팅부 접힘'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_4':
+    elif args.dataset_type == 'model_3':
         normal_names = '코팅부 미코팅'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_5':
+    elif args.dataset_type == 'model_4':
         normal_names = '코팅부 줄무늬'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_6':
+    elif args.dataset_type == 'model_5':
         normal_names = '코팅부 테이프'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_7':
-        normal_names = '코팅부 기재연결부'
-        abnormal_names = class_list.copy()
-        abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_8':
-        normal_names = '무지부 기재연결부'
+    elif args.dataset_type == 'model_6':
+        normal_names = '코팅부 코팅불량'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
         
