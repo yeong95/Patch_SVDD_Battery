@@ -94,7 +94,7 @@ def get_x_standardized(mode='train', args=None, normal_class=None):
 def get_label(args):
     mode = 'test'
     
-    class_list = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', \
+    class_list = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', \
                   '코팅부 코팅불량', '코팅부 버블', '코팅부 흑점', '코팅부 찍힘', '코팅부 백점', '코팅부 라벨지']
     
     if args.dataset_type == 'model_1':
@@ -114,10 +114,6 @@ def get_label(args):
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)
     elif args.dataset_type == 'model_5':
-        normal_names = '코팅부 테이프'
-        abnormal_names = class_list.copy()
-        abnormal_names.remove(normal_names)
-    elif args.dataset_type == 'model_6':
         normal_names = '코팅부 코팅불량'
         abnormal_names = class_list.copy()
         abnormal_names.remove(normal_names)

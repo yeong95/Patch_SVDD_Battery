@@ -8,6 +8,5 @@ Pillow
 imageio
 opencv-python
 ngt
-GPUtill
 humanize
 numba

@@ -44,19 +44,20 @@ def main():
 
     # save path
     args.save_path = f'./save/무지부_코팅부/{month}_{day}_efficientnet_b6'
+    args.load_path = f'./save/무지부_코팅부/3_13_efficientnet_b6'
     os.makedirs(args.save_path, exist_ok=True)
     
     # pretrained model path 
     args.pretrained_model_path = f'./save/finetune/{args.pretrained_model_name}'
     
     # data path
-    args.dataset_path = f'/tf/KAIER_2022/Battery_data/무지부_코팅부/코팅부'        
+    args.dataset_path = f'/home/kaier/KAIER_2022/Battery_data/무지부_코팅부(코팅부테이프제외)/코팅부'        
 
 #     DATASET_PATH = '/tf/KAIER_2022/Battery_data/multi_class' # test용
 #     DATASET_PATH_origin = '/tf/KAIER_2022/Battery_data/multi_class' # Train용
     
     # normal class
-    args.normal_class = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 테이프', '코팅부 코팅불량']
+    args.normal_class = ['코팅부 경계부 불량', '코팅부 접힘', '코팅부 미코팅', '코팅부 줄무늬', '코팅부 코팅불량']
     
     do_evaluate_encoder_multiK(args)
 

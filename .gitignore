@@ -2,6 +2,7 @@
 /anomaly_maps/
 /false prediction anomaly_maps/
 /false prediction image/
+/false selection model/
 
 # ipynb checkpoints 
 /.ipynb_checkpoints/

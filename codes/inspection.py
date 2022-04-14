@@ -95,7 +95,7 @@ def infer(x_tr, x_te, K, S, models, args):
     # Effb0- 192dim, Effb1- 192dim, Effb2- 208dim, Effb3 - 240dim, Effb4 - 272dim, Effb5 - 304dim, Effb6 - 344dim, Effb7 - 384dim
     # ResNet18 - 448dim, ResNet34 - 448dim
     try:
-        embs_tr = np.load(f"{args.save_path}/{K}_embs_tr_{args.idx_}.npy")
+        embs_tr = np.load(f"{args.load_path}/{K}_embs_tr_{args.idx_}.npy")
         print("load embs_tr")
     except:
         with torch.no_grad():
@@ -138,7 +138,7 @@ def infer(x_tr, x_te, K, S, models, args):
     embs_te = np.empty((dataset_te.N, dataset_te.row_num, dataset_te.col_num, 344), dtype=np.float32)  # [-1, I, J, D]
     
     try:
-        embs_te = np.load(f"{args.save_path}/{args.mode}_{K}_embs_te_{args.idx_}.npy")
+        embs_te = np.load(f"{args.load_path}/{K}_embs_tr_{args.idx_}.npy")
         print("load embs_te")
     except:
         with torch.no_grad():
@@ -176,8 +176,14 @@ def infer(x_tr, x_te, K, S, models, args):
         
         np.save(f"{args.save_path}/{args.mode}_{K}_embs_te_{args.idx_}", embs_te)
     
-#     mem_report("Before Train distribution")
-
+    mem_report("Before Train distribution")
+    
+    # check train accuracy
+    embs_tr = np.load(f"{args.load_path}/{K}_embs_tr_{args.idx_}.npy")
+    print("load embs_tr")
+    embs_te = embs_tr.copy()
+    print("load embs_te")
+    
     B_train, H_train, W_train, C_train = embs_tr.shape   # embs_tr: [batch, 9, 9, 344]
     emb_train = embs_tr.reshape((B_train, H_train * W_train, C_train))  
 
@@ -215,7 +221,7 @@ def infer(x_tr, x_te, K, S, models, args):
     
 #     mem_report("After Test Inference") # memory usage checking.
     
-    
+    # normality map 구하기 
     if K == 64:
         mean_64_sum = np.sum(mean_train, axis = -1)   # [81, 344] -> [81]
         mean_64_size = int(mean_train.shape[0] ** 0.5)  # 9 
@@ -230,7 +236,7 @@ def infer(x_tr, x_te, K, S, models, args):
         mean_32_min = np.min(mean_32_KL)
         mean_32_KL = mean_32_KL - mean_32_min
         normality_map = distribute_score(mean_32_KL, (256, 256), K=32, S=14)
-    
+
 
     return dist_list, normality_map
 
@@ -314,10 +320,10 @@ def inference_procedure(x_tr, x_te, model, idx_=1, args=None):
     if idx_ <  100:
         maps_64, normality_map_64 = infer(x_tr, x_te, K=64, S=24, models=model, args=args)
         maps_64 = distribute_scores(maps_64, (256, 256), K=64, S=24)
-        #det_64 = assess_anomaly_maps(maps_64, "det_64")
+
         maps_32, normality_map_32 = infer(x_tr, x_te, K=32, S=14, models=model, args=args)
         maps_32 = distribute_scores(maps_32, (256, 256), K=32, S=14) 
-        #det_32 = assess_anomaly_maps(maps_32, "det_32")
+
     else:
         maps_64 = np.load(f"save/무지부_코팅부/3_13_efficientnet_b6/test_maps_64_{idx_}.npy")
         normality_map_64 = np.load(f"save/무지부_코팅부/3_13_efficientnet_b6/normality_map_64_{idx_}.npy")
@@ -329,15 +335,15 @@ def inference_procedure(x_tr, x_te, model, idx_=1, args=None):
 
 #     import pdb;pdb.set_trace()
     # save 
-    if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_64_{idx_}.npy'):
-        np.save(f'{args.save_path}/{args.mode}_maps_64_{idx_}.npy', maps_64)
-    if not os.path.isfile(f'{args.save_path}/normality_map_64_{idx_}.npy'):
-        np.save(f'{args.save_path}/normality_map_64_{idx_}.npy', normality_map_64)
+#     if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_64_{idx_}.npy'):
+#         np.save(f'{args.save_path}/{args.mode}_maps_64_{idx_}.npy', maps_64)
+#     if not os.path.isfile(f'{args.save_path}/normality_map_64_{idx_}.npy'):
+#         np.save(f'{args.save_path}/normality_map_64_{idx_}.npy', normality_map_64)
     
-    if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy'):
-        np.save(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy', maps_32)
-    if not os.path.isfile(f'{args.save_path}/normality_map_32_{idx_}.npy'):
-        np.save(f'{args.save_path}/normality_map_32_{idx_}.npy', normality_map_32)
+#     if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy'):
+#         np.save(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy', maps_32)
+#     if not os.path.isfile(f'{args.save_path}/normality_map_32_{idx_}.npy'):
+#         np.save(f'{args.save_path}/normality_map_32_{idx_}.npy', normality_map_32)
     
     maps_mult = maps_64 * maps_32
     Final_normality_map = normality_map_64 * normality_map_32
@@ -371,21 +377,19 @@ def compute_final_anomaly_score(args):
     
 def eval_encoder_NN_multiK(args):
 
-
     x_tr_1 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[0])  # model 1
     x_tr_2 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[1])  # model 2
     x_tr_3 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[2])  # model 3
     x_tr_4 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[3])  # model 4
     x_tr_5 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[4])  # model 5
-    x_tr_6 = battery.get_x_standardized(mode='train', args=args, normal_class = args.normal_class[5])  # model 6
 
     # load validation : train + valid 
-    x_valid_1 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[0])  # model 1
-    x_valid_2 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[1])  # model 2
-    x_valid_3 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[2])  # model 3
-    x_valid_4 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[3])  # model 4
-    x_valid_5 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[4])  # model 5
-    x_valid_6 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[5])  # model 6
+#     x_valid_1 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[0])  # model 1
+#     x_valid_2 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[1])  # model 2
+#     x_valid_3 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[2])  # model 3
+#     x_valid_4 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[3])  # model 4
+#     x_valid_5 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[4])  # model 5
+#     x_valid_6 = battery.get_x_standardized(mode='valid', args=args, normal_class = args.normal_class[5])  # model 6
     
 #     x_te = battery.get_x_standardized(mode='test', args=args)
 
@@ -396,8 +400,6 @@ def eval_encoder_NN_multiK(args):
     
     if args.load_pretrained_model:
         model = EfficientNet.from_pretrained('efficientnet-b6', num_classes=15) # EfficientNet 사용 시 
-#         model.load_state_dict(torch.load(args.pretrained_model_path))
-#         import pdb;pdb.set_trace()
     
         pretrained_dict = torch.load(args.pretrained_model_path)
         model_dict = model.state_dict()
@@ -417,21 +419,27 @@ def eval_encoder_NN_multiK(args):
         model.eval()
     
     # validation data 이용하여 정상 분포 구하기 
-    args.mode = 'valid'
-    print("validation start")
-    print("model 1 start...")
-    det_mult = inference_procedure(x_tr_1, x_valid_1, model, idx_=1, args=args)
-    print("model 2 start...")
-    det_mult = inference_procedure(x_tr_2, x_valid_2, model, idx_=2, args=args)
-    print("model 3 start...")
-    det_mult = inference_procedure(x_tr_3, x_valid_3, model, idx_=3, args=args)
-    print("model 4 start...")
-    det_mult = inference_procedure(x_tr_4, x_valid_4, model, idx_=4, args=args)
-    print("model 5 start...")
-    det_mult = inference_procedure(x_tr_5, x_valid_5, model, idx_=5, args=args)
-    print("model 6 start...")
-    det_mult = inference_procedure(x_tr_6, x_valid_6, model, idx_=6, args=args)
-
+#     args.mode = 'valid'
+#     print("validation start")
+#     print("model 1 start...")
+#     det_mult = inference_procedure(x_tr_1, x_valid_1, model, idx_=1, args=args)
+#     print("model 2 start...")
+#     det_mult = inference_procedure(x_tr_2, x_valid_2, model, idx_=2, args=args)
+#     print("model 3 start...")
+#     det_mult = inference_procedure(x_tr_3, x_valid_3, model, idx_=3, args=args)
+#     print("model 4 start...")
+#     det_mult = inference_procedure(x_tr_4, x_valid_4, model, idx_=4, args=args)
+#     print("model 5 start...")
+#     det_mult = inference_procedure(x_tr_5, x_valid_5, model, idx_=5, args=args)
+#     print("model 6 start...")
+#     det_mult = inference_procedure(x_tr_6, x_valid_6, model, idx_=6, args=args)
+       
+    x_tr_1, x_tr_2, x_tr_3, x_tr_4, x_tr_5, x_tr_6 = None, None, None, None, None, None
+    for i in range(1, 7):
+        globals()['64_embs_tr_{i}'.format(i)] = np.load(f"{args.load_path}/64_embs_tr_{i}.npy")
+        globals()['32_embs_tr_{i}'.format(i)] = np.load(f"{args.load_path}/32_embs_tr_{i}.npy")
+    x_te = 
+    
     args.mode = 'test'
     print("test start")
     print("model 1 start...")
