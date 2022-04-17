@@ -68,7 +68,7 @@ def mem_report(word):
 
 
 use_cuda = torch.cuda.is_available()
-device = torch.device('cuda:0' if use_cuda else 'cpu')
+device = torch.device('cuda:1' if use_cuda else 'cpu')
 
 
 __all__ = ['eval_encoder_NN_multiK', 'eval_embeddings_NN_multiK']
@@ -90,7 +90,7 @@ def infer(x_tr, x_te, K, S, models, args):
     
     x_tr = NHWC2NCHW(x_tr) # change to (batch, C, H, W)
     dataset_tr = PatchDataset_NCHW(x_tr, K=K, S=S)
-    loader_tr = DataLoader(dataset_tr, batch_size=512, shuffle=False, pin_memory=False)
+    loader_tr = DataLoader(dataset_tr, batch_size=256, shuffle=False, pin_memory=False)
     embs_tr = np.empty((dataset_tr.N, dataset_tr.row_num, dataset_tr.col_num, 344), dtype=np.float32)  # [-1, I, J, D]
     # Effb0- 192dim, Effb1- 192dim, Effb2- 208dim, Effb3 - 240dim, Effb4 - 272dim, Effb5 - 304dim, Effb6 - 344dim, Effb7 - 384dim
     # ResNet18 - 448dim, ResNet34 - 448dim
@@ -100,7 +100,7 @@ def infer(x_tr, x_te, K, S, models, args):
     except:
         with torch.no_grad():
             for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_tr, "Train infer %dx%d patch" %(K, K) , position = 0, leave = True)):
-                xs = xs.cuda() # (512, 3, 64, 64)
+                xs = xs.to(device) # (512, 3, 64, 64)
 
                 #_ = models(xs)
 
@@ -131,7 +131,7 @@ def infer(x_tr, x_te, K, S, models, args):
     
     x_te = NHWC2NCHW(x_te)
     dataset_te = PatchDataset_NCHW(x_te, K=K, S=S)
-    loader_te = DataLoader(dataset_te, batch_size=512, shuffle=False, pin_memory=False)
+    loader_te = DataLoader(dataset_te, batch_size=256, shuffle=False, pin_memory=False)
     embs_te = np.empty((dataset_te.N, dataset_te.row_num, dataset_te.col_num, 344), dtype=np.float32)  # [-1, I, J, D]
     
     try:
@@ -140,7 +140,7 @@ def infer(x_tr, x_te, K, S, models, args):
     except:
         with torch.no_grad():
             for idx, (xs, ns, iis, js) in enumerate(tqdm(loader_te, "test infer %dx%d patch" % (K, K), position = 0, leave = True)):
-                xs = xs.cuda() # (64, 3, 64, 64)
+                xs = xs.to(device) # (64, 3, 64, 64)
 
                 # Prediction
                 endpoints = models.extract_endpoints(xs)
@@ -229,8 +229,8 @@ def inference_procedure(x_tr, x_te, model, idx_=1, args=None):
     
     args.idx_ = idx_
     if idx_ <  100:
-        maps_128 = infer(x_tr, x_te, K=128, S=32, models=model, args=args)
-        maps_128 = distribute_scores(maps_128, (256, 256), K=128, S=32)
+        maps_256 = infer(x_tr, x_te, K=256, S=64, models=model, args=args)
+        maps_256 = distribute_scores(maps_256, (256, 256), K=256, S=64)
 
         maps_32 = infer(x_tr, x_te, K=32, S=14, models=model, args=args)
         maps_32 = distribute_scores(maps_32, (256, 256), K=32, S=14) 
@@ -245,13 +245,13 @@ def inference_procedure(x_tr, x_te, model, idx_=1, args=None):
         print("load trained map...")
 
     # save 
-    if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_128_{idx_}.npy'):
-        np.save(f'{args.save_path}/{args.mode}_maps_128_{idx_}.npy', maps_128)
+    if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_256_{idx_}.npy'):
+        np.save(f'{args.save_path}/{args.mode}_maps_256_{idx_}.npy', maps_256)
     
     if not os.path.isfile(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy'):
         np.save(f'{args.save_path}/{args.mode}_maps_32_{idx_}.npy', maps_32)
     
-    maps_mult = maps_128 * maps_32
+    maps_mult = maps_256 * maps_32
     
     args.dataset_type = f'model_{idx_}'
     det_mult = assess_anomaly_maps(maps_mult, f"model_{idx_}", args)

@@ -51,7 +51,7 @@ def main():
     args.pretrained_model_path = f'./save/finetune/{args.pretrained_model_name}'
     
     # data path
-    args.dataset_path = f'/home/kaier/KAIER_2022/Battery_data/무지부_코팅부_테이프제외/코팅부'        
+    args.dataset_path = f'/tf/Battery_data/무지부_코팅부_테이프제외2/코팅부'        
 
 #     DATASET_PATH = '/tf/KAIER_2022/Battery_data/multi_class' # test용
 #     DATASET_PATH_origin = '/tf/KAIER_2022/Battery_data/multi_class' # Train용
